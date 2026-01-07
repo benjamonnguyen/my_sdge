@@ -286,7 +286,7 @@ def main():
 
     # Write YAML
 
-    output = os.path.join(output_dir, "schedules.yaml")
+    output = os.path.join(output_dir, "sdge_schedules.yaml")
     with open(output, "w") as f:
         yaml.dump(all_rates, f, default_flow_style=False, sort_keys=False)
 
