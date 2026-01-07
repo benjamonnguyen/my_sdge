@@ -1,0 +1,148 @@
+TOU-DR2:
+  type: op
+  summer:
+    onpeak:
+      tariffs: 0.35141
+      eecc: 0.34962
+    offpeak:
+      tariffs: 0.34494
+      eecc: 0.08442
+    baseline_adjustment_credit: -0.10905
+  winter:
+    onpeak:
+      tariffs: 0.34692
+      eecc: 0.27508
+    offpeak:
+      tariffs: 0.34692
+      eecc: 0.13793
+    baseline_adjustment_credit: -0.10905
+DR:
+  type: tier
+  summer:
+    tier1:
+      tariffs: 0.23788
+      eecc: 0.18296
+    tier2:
+      tariffs: 0.34692
+      eecc: 0.18296
+  winter:
+    tier1:
+      tariffs: 0.23788
+      eecc: 0.18296
+    tier2:
+      tariffs: 0.34692
+      eecc: 0.18296
+DR-SES:
+  type: sop
+  summer:
+    onpeak:
+      tariffs: 0.27431
+      eecc: 0.47075
+    offpeak:
+      tariffs: 0.27431
+      eecc: 0.17332
+    super_offpeak:
+      tariffs: 0.27431
+      eecc: 0.08157
+  winter:
+    onpeak:
+      tariffs: 0.27431
+      eecc: 0.20013
+    offpeak:
+      tariffs: 0.27431
+      eecc: 0.14354
+    super_offpeak:
+      tariffs: 0.27431
+      eecc: 0.07419
+TOU-DR-P:
+  type: sop
+  summer:
+    onpeak:
+      tariffs: 0.34692
+      eecc: 0.19963
+    offpeak:
+      tariffs: 0.34692
+      eecc: 0.15613
+    super_offpeak:
+      tariffs: 0.34692
+      eecc: 0.08295
+    baseline_adjustment_credit: -0.10905
+  winter:
+    onpeak:
+      tariffs: 0.34692
+      eecc: 0.25202
+    offpeak:
+      tariffs: 0.34692
+      eecc: 0.17707
+    super_offpeak:
+      tariffs: 0.34692
+      eecc: 0.09383
+    baseline_adjustment_credit: -0.10905
+EV-TOU:
+  type: sop
+  summer:
+    onpeak:
+      tariffs: 0.38715
+      eecc: 0.47075
+    offpeak:
+      tariffs: 0.38715
+      eecc: 0.17332
+    super_offpeak:
+      tariffs: 0.23395
+      eecc: 0.08157
+  winter:
+    onpeak:
+      tariffs: 0.38715
+      eecc: 0.20013
+    offpeak:
+      tariffs: 0.38715
+      eecc: 0.14354
+    super_offpeak:
+      tariffs: 0.23395
+      eecc: 0.07419
+EV-TOU-2:
+  type: sop
+  summer:
+    onpeak:
+      tariffs: 0.31357
+      eecc: 0.47075
+    offpeak:
+      tariffs: 0.31357
+      eecc: 0.17332
+    super_offpeak:
+      tariffs: 0.17669
+      eecc: 0.08157
+  winter:
+    onpeak:
+      tariffs: 0.31357
+      eecc: 0.20013
+    offpeak:
+      tariffs: 0.31357
+      eecc: 0.14354
+    super_offpeak:
+      tariffs: 0.17669
+      eecc: 0.07419
+TOU-DR1:
+  type: sop
+  summer:
+    onpeak:
+      tariffs: 0.34692
+      eecc: 0.34962
+    offpeak:
+      tariffs: 0.34692
+      eecc: 0.12868
+    super_offpeak:
+      tariffs: 0.34692
+      eecc: 0.04126
+    baseline_adjustment_credit: -0.10905
+  winter:
+    onpeak:
+      tariffs: 0.34692
+      eecc: 0.27508
+    offpeak:
+      tariffs: 0.34692
+      eecc: 0.19327
+    super_offpeak:
+      tariffs: 0.34692
+      eecc: 0.10241
+    baseline_adjustment_credit: -0.10905

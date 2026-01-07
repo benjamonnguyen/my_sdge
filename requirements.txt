@@ -3,3 +3,5 @@ pandas==2.1.4
 numpy==1.22.4
 PyYAML==6.0.1
 click==8.1.7
+typing_extensions==6.5.0
+pypdf==6.5.0
