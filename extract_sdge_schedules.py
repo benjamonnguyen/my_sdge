@@ -225,6 +225,41 @@ def parse_section(section_text: str, schedule_type: str, season: str) -> Dict:
     return rates
 
 
+def process_tier_to_flat(rates: Dict) -> Dict:
+    """Convert tier schedule to flat schedule with baseline_adjustment_credit.
+
+    For tier schedules:
+    - Calculate baseline_adjustment_credit = tier1_total - tier2_total for each season
+    - Remove tier1
+    - Rename tier2 to flat
+    """
+    result = {}
+
+    for season, season_data in rates.items():
+        # Check if we have tier1 and tier2
+        if "tier1" in season_data and "tier2" in season_data:
+            tier1 = season_data["tier1"]
+            tier2 = season_data["tier2"]
+
+            # Calculate totals
+            tier1_total = tier1["tariffs"] + tier1["eecc"]
+            tier2_total = tier2["tariffs"] + tier2["eecc"]
+
+            # Calculate baseline adjustment credit (tier1 - tier2, should be negative)
+            baseline_credit = round(tier1_total - tier2_total, 5)
+
+            # Create flat rate from tier2
+            result[season] = {
+                "flat": {"tariffs": tier2["tariffs"], "eecc": tier2["eecc"]},
+                "baseline_adjustment_credit": baseline_credit,
+            }
+        else:
+            # If not a proper tier schedule, keep as-is
+            result[season] = season_data
+
+    return result
+
+
 def process_pdf(pdf_path: pathlib.Path) -> Dict:
     """Process a single PDF file, possibly containing multiple schedules.
     Returns dict mapping schedule_name to data."""
@@ -235,31 +270,23 @@ def process_pdf(pdf_path: pathlib.Path) -> Dict:
 
     results = {}
     sections = extract_sections(text)
-    if sections:
-        for schedule_name, section_text in sections:
-            schedule_type = determine_type(section_text)
-            rates = parse_rates(section_text, schedule_type)
-            results[schedule_name] = {
-                "type": schedule_type,
-                "summer": rates["summer"],
-                "winter": rates["winter"],
-            }
-    else:
-        # fallback to filename-based schedule name
-        schedule_name = parse_schedule_name(pdf_path.name)
-        schedule_type = determine_type(text)
-        rates = parse_rates(text, schedule_type)
-        results[schedule_name] = {
-            "type": schedule_type,
-            "summer": rates["summer"],
-            "winter": rates["winter"],
-        }
+    for schedule_name, section_text in sections:
+        schedule_type = determine_type(section_text)
+        rates = parse_rates(section_text, schedule_type)
 
+        # Process based on type
+        if schedule_type == "tier":
+            # Convert tier to flat with baseline_adjustment_credit
+            processed_rates = process_tier_to_flat(rates)
+            results[schedule_name] = processed_rates
+        else:
+            # TOU schedules get tou_type field
+            results[schedule_name] = {"tou_type": schedule_type, **rates}
     return results
 
 
 def main():
-    output_dir = "schedules"
+    output_dir = "rates"
 
     parser = argparse.ArgumentParser(
         description="Extract rate schedules from SDGE PDF files."
@@ -285,7 +312,6 @@ def main():
             all_rates.update(result)
 
     # Write YAML
-
     output = os.path.join(output_dir, "sdge_schedules.yaml")
     with open(output, "w") as f:
         yaml.dump(all_rates, f, default_flow_style=False, sort_keys=False)

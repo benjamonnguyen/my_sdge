@@ -1,5 +1,5 @@
 TOU-DR2:
-  type: op
+  tou_type: op
   summer:
     onpeak:
       tariffs: 0.35141
@@ -17,23 +17,18 @@ TOU-DR2:
       eecc: 0.13793
     baseline_adjustment_credit: -0.10905
 DR:
-  type: tier
   summer:
-    tier1:
-      tariffs: 0.23788
-      eecc: 0.18296
-    tier2:
+    flat:
       tariffs: 0.34692
       eecc: 0.18296
+    baseline_adjustment_credit: -0.10904
   winter:
-    tier1:
-      tariffs: 0.23788
-      eecc: 0.18296
-    tier2:
+    flat:
       tariffs: 0.34692
       eecc: 0.18296
+    baseline_adjustment_credit: -0.10904
 DR-SES:
-  type: sop
+  tou_type: sop
   summer:
     onpeak:
       tariffs: 0.27431
@@ -55,7 +50,7 @@ DR-SES:
       tariffs: 0.27431
       eecc: 0.07419
 TOU-DR-P:
-  type: sop
+  tou_type: sop
   summer:
     onpeak:
       tariffs: 0.34692
@@ -79,7 +74,7 @@ TOU-DR-P:
       eecc: 0.09383
     baseline_adjustment_credit: -0.10905
 EV-TOU:
-  type: sop
+  tou_type: sop
   summer:
     onpeak:
       tariffs: 0.38715
@@ -101,7 +96,7 @@ EV-TOU:
       tariffs: 0.23395
       eecc: 0.07419
 EV-TOU-2:
-  type: sop
+  tou_type: sop
   summer:
     onpeak:
       tariffs: 0.31357
@@ -123,7 +118,7 @@ EV-TOU-2:
       tariffs: 0.17669
       eecc: 0.07419
 TOU-DR1:
-  type: sop
+  tou_type: sop
   summer:
     onpeak:
       tariffs: 0.34692
