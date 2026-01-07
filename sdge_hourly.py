@@ -130,7 +130,7 @@ class SDGECaltulator:
     def calculate(self, plan=None):
         # usage tally
         plan_data = self.rates[plan]
-        schedule = get_schedule_function(plan_data["type"])
+        schedule = get_schedule_function(plan_data)
         rates_classes, season_days_counter, season_class_tally = self.tally(
             schedule=schedule
         )
@@ -138,22 +138,28 @@ class SDGECaltulator:
 
         total_fee = 0.0
 
-        for season in ["winter", "summer"]:
+        # Iterate through available seasons dynamically
+        for season, season_data in plan_data.items():
+            # Skip non-season fields (like tou_type)
+            if season not in season_class_tally:
+                continue
+
             season_total_usage = sum(season_class_tally[season].values())
 
             # Calculate rates by summing tariffs and eecc for each rate class
             rates_by_class = {}
             for rate_class in rates_classes:
-                rate_data = plan_data[season][rate_class]
-                rates_by_class[rate_class] = rate_data["tariffs"] + rate_data["eecc"]
+                if rate_class in season_data:
+                    rate_data = season_data[rate_class]
+                    rates_by_class[rate_class] = rate_data["tariffs"] + rate_data["eecc"]
 
             total_fee += get_raw_sum(season_class_tally[season], rates_by_class)
 
-            # Handle baseline adjustment credit (if present)
+            # Handle baseline adjustment credit (if present at season level)
             credit_per_kwh = 0.0
-            if "baseline_adjustment_credit" in plan_data[season]:
+            if "baseline_adjustment_credit" in season_data:
                 # Note: baseline_adjustment_credit is negative in new schema
-                credit_per_kwh = -plan_data[season]["baseline_adjustment_credit"]
+                credit_per_kwh = -season_data["baseline_adjustment_credit"]
 
             allowance_deduction = get_allowance_deduction(
                 zone=self.zone,
@@ -322,29 +328,34 @@ def schedule_op(date):
 
 
 @cache
-def schedule_tier(date):
+def schedule_flat(date):
     """
-    rates schedule for tiered plans
+    rates schedule for flat rate plans (non-TOU)
     """
-    EVERYDAY_HOURS = {"tier1": {i for i in range(24)}, "tier2": {i for i in range(24)}}
+    EVERYDAY_HOURS = {"flat": {i for i in range(24)}}
     return EVERYDAY_HOURS
 
 
 schedule_sop.rates_classes = ["super_offpeak", "offpeak", "onpeak"]
 schedule_op.rates_classes = ["offpeak", "onpeak"]
-schedule_tier.rates_classes = ["tier1", "tier2"]
+schedule_flat.rates_classes = ["flat"]
 
 
-def get_schedule_function(plan_type):
+def get_schedule_function(plan_data):
     """
-    Map plan type to schedule function based on new schema
+    Map plan type to schedule function based on new schema.
+    If plan has tou_type field, it's a TOU schedule, otherwise it's flat.
     """
-    type_to_schedule = {
-        "sop": schedule_sop,
-        "op": schedule_op,
-        "tier": schedule_tier,
-    }
-    return type_to_schedule.get(plan_type)
+    if "tou_type" in plan_data:
+        tou_type = plan_data["tou_type"]
+        type_to_schedule = {
+            "sop": schedule_sop,
+            "op": schedule_op,
+        }
+        return type_to_schedule.get(tou_type)
+    else:
+        # No tou_type means it's a flat rate schedule
+        return schedule_flat
 
 
 def category_tally_by_schedule(daily=None, schedule=None):
