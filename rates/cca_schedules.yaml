@@ -35,7 +35,7 @@ EV-TOU-5:
     onpeak: 0.17916
     offpeak: 0.13237
     super_offpeak: 0.07501
-TOU-DR-1:
+TOU-DR1:
   summer:
     onpeak: 0.43215
     offpeak: 0.202
@@ -44,7 +44,7 @@ TOU-DR-1:
     onpeak: 0.15509
     offpeak: 0.09303
     super_offpeak: 0.07501
-TOU-DR-2:
+TOU-DR2:
   summer:
     onpeak: 0.43215
     offpeak: 0.15216

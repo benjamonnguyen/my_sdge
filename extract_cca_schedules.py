@@ -32,6 +32,12 @@ def parse_cca_rates(text: str) -> Dict:
 
     Returns dict mapping schedule_name to rates data.
     """
+    # Mapping from CCA schedule names to SDGE plan names
+    cca_to_sdge_mapping = {
+        "TOU-DR-1": "TOU-DR1",
+        "TOU-DR-2": "TOU-DR2",
+    }
+
     results = {}
     lines = text.splitlines()
 
@@ -89,7 +95,9 @@ def parse_cca_rates(text: str) -> Dict:
                 len(schedule_data[season]) > 0 for season in ["summer", "winter"]
             )
             if has_data:
-                results[schedule_name] = schedule_data
+                # Apply mapping to match SDGE plan names
+                mapped_name = cca_to_sdge_mapping.get(schedule_name, schedule_name)
+                results[mapped_name] = schedule_data
 
         i += 1
 
