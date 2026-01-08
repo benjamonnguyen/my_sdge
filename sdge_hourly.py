@@ -29,6 +29,50 @@ def load_yaml(filepath):
         return dict()
 
 
+def generate_cca_plans(sdge_rates, cca_rates):
+    """
+    Generate CCA-* plans from SDGE plans using CCA rates.
+
+    For CCA plans:
+    - Swap eecc with cca_eecc from CCA rates
+    - Keep all other tariffs the same
+    - Plans prefixed with CCA_ will automatically get PCIA fee added
+
+    Logs if no corresponding SDGE plan is found for a CCA schedule.
+
+    Returns dictionary with CCA-* plans.
+    """
+    import copy
+
+    cca_plans = {}
+
+    for cca_plan_name, cca_data in cca_rates.items():
+        if cca_plan_name in sdge_rates:
+            # Create CCA plan by deep copying SDGE plan
+            cca_plan_data = copy.deepcopy(sdge_rates[cca_plan_name])
+
+            # Replace eecc with cca_eecc for matching rate classes
+            for season in ["summer", "winter"]:
+                if season in cca_plan_data and season in cca_data:
+                    sdge_season_data = cca_plan_data[season]
+                    cca_season_data = cca_data[season]
+
+                    # Swap eecc with cca_eecc for each matching rate class
+                    for rate_class, cca_rate in cca_season_data.items():
+                        if rate_class in sdge_season_data and isinstance(
+                            sdge_season_data[rate_class], dict
+                        ):
+                            sdge_season_data[rate_class]["eecc"] = cca_rate
+
+            cca_plans[f"CCA-{cca_plan_name}"] = cca_plan_data
+        else:
+            print(
+                f"Warning: No corresponding SDGE plan found for CCA schedule '{cca_plan_name}'"
+            )
+
+    return cca_plans
+
+
 def convert_12h_to_24h(time_str):
     dt = datetime.datetime.strptime(time_str, "%I:%M %p")
     # extract the hour
@@ -145,7 +189,7 @@ class SDGECaltulator:
         for season in ["summer", "winter"]:
             breakdown[season] = {
                 "weekday": {"days": 0, "usage": {x: 0.0 for x in rates_classes}},
-                "weekend": {"days": 0, "usage": {x: 0.0 for x in rates_classes}}
+                "weekend": {"days": 0, "usage": {x: 0.0 for x in rates_classes}},
             }
 
         # Process each day
@@ -156,7 +200,7 @@ class SDGECaltulator:
             # Determine if weekday or weekend/holiday
             weekday = date.weekday()
             holidays = holidays_of_year(date.year)
-            is_weekend = (weekday == 5 or weekday == 6 or date in holidays)
+            is_weekend = weekday == 5 or weekday == 6 or date in holidays
             day_type = "weekend" if is_weekend else "weekday"
 
             # Get day's schedule
@@ -172,11 +216,13 @@ class SDGECaltulator:
 
                 # Tally usage by rate class
                 for rate_class in rates_classes:
-                    usage = sum([
-                        consumption_data[i][1]
-                        for i in range(len(consumption_data))
-                        if consumption_data[i][0] in day_schedule[rate_class]
-                    ])
+                    usage = sum(
+                        [
+                            consumption_data[i][1]
+                            for i in range(len(consumption_data))
+                            if consumption_data[i][0] in day_schedule[rate_class]
+                        ]
+                    )
                     breakdown[season][day_type]["usage"][rate_class] += usage
 
         return breakdown
@@ -205,7 +251,9 @@ class SDGECaltulator:
             for rate_class in rates_classes:
                 if rate_class in season_data:
                     rate_data = season_data[rate_class]
-                    rates_by_class[rate_class] = rate_data["tariffs"] + rate_data["eecc"]
+                    rates_by_class[rate_class] = (
+                        rate_data["tariffs"] + rate_data["eecc"]
+                    )
 
             total_fee += get_raw_sum(season_class_tally[season], rates_by_class)
 
@@ -226,20 +274,20 @@ class SDGECaltulator:
             # remove the deduction
             total_fee -= allowance_deduction
 
-        # Note: service_fee not present in new schema, assuming 0 for now
-        # apply the PCIA rates for CCA
         if "CCA" in plan:
             total_fee += self.total_usage * self.pcia_rate
         return total_fee
 
 
-def calculate_misc_fees(total_usage=0.0, pcia_rate=0.01687):
-    misc_fee = 0.0
-
-    return misc_fee
-
-
-def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost, zone="coastal", service_type="electric"):
+def print_detailed_analysis(
+    plan,
+    plan_data,
+    breakdown,
+    total_usage,
+    total_cost,
+    zone="coastal",
+    service_type="electric",
+):
     """
     Print detailed breakdown in hierarchical format.
     """
@@ -263,14 +311,18 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
             continue
 
         # Calculate season total kWh
-        season_kwh = sum([
-            breakdown[season][day_type]["usage"][rate_class]
-            for day_type in ["weekday", "weekend"]
-            for rate_class in rates_classes
-        ])
+        season_kwh = sum(
+            [
+                breakdown[season][day_type]["usage"][rate_class]
+                for day_type in ["weekday", "weekend"]
+                for rate_class in rates_classes
+            ]
+        )
 
         # Count total days in season
-        total_days = breakdown[season]["weekday"]["days"] + breakdown[season]["weekend"]["days"]
+        total_days = (
+            breakdown[season]["weekday"]["days"] + breakdown[season]["weekend"]["days"]
+        )
 
         # Pre-calculate season total cost for $/day display
         season_total_cost_precalc = 0.0
@@ -283,9 +335,14 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
                     season_total_cost_precalc += usage * rate_per_kwh
 
         # Calculate $/day for season
-        season_cost_per_day = season_total_cost_precalc / total_days if total_days > 0 else 0.0
+        season_cost_per_day = (
+            season_total_cost_precalc / total_days if total_days > 0 else 0.0
+        )
 
-        print(f"┌─ {season.upper()} (${season_cost_per_day:.2f}/day) " + "─" * (80 - len(season.upper()) - len(f"{season_cost_per_day:.2f}") - 11))
+        print(
+            f"┌─ {season.upper()} (${season_cost_per_day:.2f}/day) "
+            + "─" * (80 - len(season.upper()) - len(f"{season_cost_per_day:.2f}") - 11)
+        )
         print("│")
 
         season_total_cost = 0.0
@@ -312,7 +369,10 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
 
             # Print day type header
             day_type_label = "WEEKDAY" if day_type == "weekday" else "WEEKEND/HOLIDAY"
-            print(f"│  ┌─ {day_type_label} (${cost_per_day:.2f}/day) " + "─" * (80 - len(day_type_label) - len(f"{cost_per_day:.2f}") - 16))
+            print(
+                f"│  ┌─ {day_type_label} (${cost_per_day:.2f}/day) "
+                + "─" * (80 - len(day_type_label) - len(f"{cost_per_day:.2f}") - 16)
+            )
 
             # Print rate classes
             day_type_kwh = 0.0
@@ -326,17 +386,23 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
                     # Format rate class name for display
                     rate_display = rate_class.replace("_", " ").title()
 
-                    print(f"│  │  {rate_display:20} {usage:>8.2f} kWh    ${rate_per_kwh:.4f}/kWh    ${cost:>8.2f}")
+                    print(
+                        f"│  │  {rate_display:20} {usage:>8.2f} kWh    ${rate_per_kwh:.4f}/kWh    ${cost:>8.2f}"
+                    )
                     day_type_kwh += usage
 
             print(f"│  │                     {'─' * 7}                      {'─' * 7}")
-            print(f"│  │  {day_type_label.capitalize():20} {day_type_kwh:>8.2f} kWh                  ${day_type_cost:>8.2f}")
-            print(f"│  └" + "─" * 74)
+            print(
+                f"│  │  {day_type_label.capitalize():20} {day_type_kwh:>8.2f} kWh                  ${day_type_cost:>8.2f}"
+            )
+            print("│  └" + "─" * 74)
             print("│")
 
             season_total_cost += day_type_cost
 
-        print(f"│  {season.capitalize()} Total:         {season_kwh:>8.2f} kWh                  ${season_total_cost:>8.2f}")
+        print(
+            f"│  {season.capitalize()} Total:         {season_kwh:>8.2f} kWh                  ${season_total_cost:>8.2f}"
+        )
         print("│")
         print("└" + "─" * 79)
         print()
@@ -354,13 +420,18 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
             continue
         if "baseline_adjustment_credit" in season_data:
             # Get season usage
-            season_kwh = sum([
-                breakdown[season][day_type]["usage"][rate_class]
-                for day_type in ["weekday", "weekend"]
-                for rate_class in rates_classes
-            ])
+            season_kwh = sum(
+                [
+                    breakdown[season][day_type]["usage"][rate_class]
+                    for day_type in ["weekday", "weekend"]
+                    for rate_class in rates_classes
+                ]
+            )
             # Get billing days
-            billing_days = breakdown[season]["weekday"]["days"] + breakdown[season]["weekend"]["days"]
+            billing_days = (
+                breakdown[season]["weekday"]["days"]
+                + breakdown[season]["weekend"]["days"]
+            )
             # Get credit per kwh
             credit_per_kwh = -season_data["baseline_adjustment_credit"]
 
@@ -376,11 +447,17 @@ def print_detailed_analysis(plan, plan_data, breakdown, total_usage, total_cost,
             total_baseline_credit += allowance_deduction
 
     # Print totals
-    print(f"Plan Subtotal:                                       ${plan_subtotal:>8.2f}")
-    print(f"Baseline Adjustment Credit:                          ${-total_baseline_credit:>8.2f}")
+    print(
+        f"Plan Subtotal:                                       ${plan_subtotal:>8.2f}"
+    )
+    print(
+        f"Baseline Adjustment Credit:                          ${-total_baseline_credit:>8.2f}"
+    )
     print("─" * 80)
     avg_rate = total_cost / total_usage if total_usage != 0 else 0.0
-    print(f"PLAN TOTAL: {total_usage:.2f} kWh @ ${avg_rate:.4f}/kWh = ${total_cost:.2f}")
+    print(
+        f"PLAN TOTAL: {total_usage:.2f} kWh @ ${avg_rate:.4f}/kWh = ${total_cost:.2f}"
+    )
     print()
 
 
@@ -670,17 +747,22 @@ def plot_sdge_hourly(filename, zone, pcia_year, solar, verbose):
 
     plans_and_charges = dict()
     sdge_schedules = os.path.join(pwd, "rates", "sdge_schedules.yaml")
+    cca_schedules = os.path.join(pwd, "rates", "cca_schedules.yaml")
     pcia_file = os.path.join(pwd, "rates", "pcia.yaml")
 
     rates = load_yaml(sdge_schedules)
+    cca_rates = load_yaml(cca_schedules)
     pcia_rates = load_yaml(pcia_file)
 
-    # Create list of plans (excluding CCA plans for now)
-    plans = [plan for plan in rates.keys() if not plan.startswith("CCA")]
+    # Generate CCA plans
+    if cca_rates:
+        cca_plans = generate_cca_plans(rates, cca_rates)
+        rates.update(cca_plans)
 
-    c = SDGECaltulator(
-        daily, rates, pcia_rates[int(pcia_year)], zone=zone, solar=solar
-    )
+    # Create list of all plans
+    plans = list(rates.keys())
+
+    c = SDGECaltulator(daily, rates, pcia_rates[int(pcia_year)], zone=zone, solar=solar)
 
     # Calculate charges for all plans first
     for plan in plans:
@@ -703,7 +785,7 @@ def plot_sdge_hourly(filename, zone, pcia_year, solar, verbose):
                 c.total_usage,
                 estimated_charge,
                 zone=zone,
-                service_type="electric"
+                service_type="electric",
             )
 
     # Print summary section
@@ -720,6 +802,4 @@ def plot_sdge_hourly(filename, zone, pcia_year, solar, verbose):
 
 
 if __name__ == "__main__":
-    # print(get_baseline(zone="coastal", season="summer", service_type="electric", multiplier=1.3, billing_days=29))
-
     plot_sdge_hourly()
